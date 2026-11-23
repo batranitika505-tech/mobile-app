@@ -8,6 +8,7 @@ import { BorderRadius, Spacing } from '../../src/constants/layout';
 import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Badge } from '../../src/components/common/Badge';
+import { useGuestProgress } from '../../src/context/GuestProgressContext';
 
 interface LeaderboardEntry {
   rank: number;
@@ -29,7 +30,20 @@ const mockRankings: LeaderboardEntry[] = [
 
 export default function LeaderboardScreen() {
   const router = useRouter();
+  const { progress } = useGuestProgress();
   const [activeFilter, setActiveFilter] = useState<'national' | 'regional'>('national');
+
+  const displayedRankings: LeaderboardEntry[] = [
+    ...mockRankings.slice(0, 5),
+    {
+      rank: 6,
+      name: progress.guestId ? `You (Guest: ${progress.guestId.slice(-6)})` : 'You (Guest Preview)',
+      state: 'Local Session',
+      xp: progress.totalXp,
+      tier: progress.totalXp >= 1000 ? 'Jal Mitra' : 'Water Cadet',
+      isCurrentUser: true,
+    },
+  ];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -90,7 +104,7 @@ export default function LeaderboardScreen() {
           <Text style={[styles.colHeader, styles.colXp]}>Sample XP</Text>
         </View>
 
-        {mockRankings.map((entry) => (
+        {displayedRankings.map((entry) => (
           <View
             key={entry.rank}
             style={[

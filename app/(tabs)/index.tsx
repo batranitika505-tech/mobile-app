@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Award,
@@ -19,9 +19,25 @@ import { BorderRadius, Spacing } from '../../src/constants/layout';
 import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Badge } from '../../src/components/common/Badge';
+import { useGuestProgress } from '../../src/context/GuestProgressContext';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { progress, isLoading } = useGuestProgress();
+
+  const currentLevel = Math.floor(progress.totalXp / 250) + 1;
+  const levelTitle =
+    currentLevel === 1
+      ? 'Novice'
+      : currentLevel === 2
+        ? 'Apprentice'
+        : currentLevel === 3
+          ? 'Guardian'
+          : 'Master';
+
+  const guestLabel = progress.guestId
+    ? `Guest: ${progress.guestId.slice(-6)}`
+    : 'Guest Session';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -33,44 +49,51 @@ export default function HomeScreen() {
             <Text style={styles.cadetName}>Groundwater Guardian</Text>
           </View>
           <Badge
-            label="Guest Session"
+            label={guestLabel}
             variant="turquoise"
             icon={<Droplets size={12} color={Colors.turquoiseLight} />}
           />
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <View style={styles.statIconRow}>
-              <Award size={16} color={Colors.turquoise} />
-              <Text style={styles.statLabel}>Total XP</Text>
-            </View>
-            <Text style={styles.statValue}>0 XP</Text>
-            <Text style={styles.statSub}>Level 1: Novice</Text>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={Colors.turquoise} />
+            <Text style={styles.loadingText}>Restoring saved progress...</Text>
           </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statBox}>
-            <View style={styles.statIconRow}>
-              <Coins size={16} color={Colors.goldCoin} />
-              <Text style={styles.statLabel}>Coins</Text>
+        ) : (
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <View style={styles.statIconRow}>
+                <Award size={16} color={Colors.turquoise} />
+                <Text style={styles.statLabel}>Total XP</Text>
+              </View>
+              <Text style={styles.statValue}>{progress.totalXp} XP</Text>
+              <Text style={styles.statSub}>Level {currentLevel}: {levelTitle}</Text>
             </View>
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statSub}>Eco Credits</Text>
-          </View>
 
-          <View style={styles.statDivider} />
+            <View style={styles.statDivider} />
 
-          <View style={styles.statBox}>
-            <View style={styles.statIconRow}>
-              <CheckCircle2 size={16} color={Colors.sustainableGreen} />
-              <Text style={styles.statLabel}>Cleared</Text>
+            <View style={styles.statBox}>
+              <View style={styles.statIconRow}>
+                <Coins size={16} color={Colors.goldCoin} />
+                <Text style={styles.statLabel}>Coins</Text>
+              </View>
+              <Text style={styles.statValue}>{progress.coins}</Text>
+              <Text style={styles.statSub}>Eco Credits</Text>
             </View>
-            <Text style={styles.statValue}>0 / 16</Text>
-            <Text style={styles.statSub}>Scenarios</Text>
+
+            <View style={styles.statDivider} />
+
+            <View style={styles.statBox}>
+              <View style={styles.statIconRow}>
+                <CheckCircle2 size={16} color={Colors.sustainableGreen} />
+                <Text style={styles.statLabel}>Cleared</Text>
+              </View>
+              <Text style={styles.statValue}>{progress.completedScenarios.length} / 16</Text>
+              <Text style={styles.statSub}>Scenarios</Text>
+            </View>
           </View>
-        </View>
+        )}
       </Card>
 
       {/* Main Call to Action */}
@@ -252,6 +275,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs,
     borderWidth: 1,
     borderColor: Colors.navyCardBorder,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.navyDark,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.navyCardBorder,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   statBox: {
     flex: 1,

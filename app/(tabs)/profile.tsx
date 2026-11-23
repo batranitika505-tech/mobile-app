@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Award,
@@ -19,21 +19,37 @@ import { BorderRadius, Spacing } from '../../src/constants/layout';
 import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Badge } from '../../src/components/common/Badge';
+import { useGuestProgress } from '../../src/context/GuestProgressContext';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { progress, isLoading, resetProgress } = useGuestProgress();
+
+  const currentLevel = Math.floor(progress.totalXp / 250) + 1;
+
+  // Maximum scenarios is 16; total max XP is 1600; 70% threshold is 1120 XP
+  const maxConfiguredXp = 1600;
+  const targetXp70Percent = 1120;
+  const moduleProgress = progress.completedModules.length / 4;
+  const xpProgress = Math.min(1, progress.totalXp / targetXp70Percent);
+  const certPercentage = Math.round(((moduleProgress + xpProgress) / 2) * 100);
 
   const handleResetGuestData = () => {
     Alert.alert(
-      'Reset Local Data',
-      'This will clear local guest progress and restore starting baseline metrics.',
+      'Reset Gameplay Progress',
+      'This will reset your earned XP, coins, completed scenarios, and modules back to zero.\n\nYour persistent Guest ID will be preserved.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset',
+          text: 'Reset Progress',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Reset Complete', 'Local guest session has been reset.');
+          onPress: async () => {
+            try {
+              await resetProgress();
+              Alert.alert('Reset Complete', 'Your gameplay progress has been reset to zero.');
+            } catch {
+              Alert.alert('Error', 'Failed to reset progress. Please try again.');
+            }
           },
         },
       ]
@@ -51,31 +67,40 @@ export default function ProfileScreen() {
           <View style={styles.profileInfo}>
             <View style={styles.badgeRow}>
               <Badge label="Guest Mode" variant="turquoise" />
-              <Badge label="Level 1" variant="neutral" />
+              <Badge label={`Level ${currentLevel}`} variant="neutral" />
             </View>
             <Text style={styles.playerName}>Cadet JalRakshak</Text>
-            <Text style={styles.playerRole}>Groundwater Conservation Trainee</Text>
+            <Text style={styles.playerRole}>
+              Trainee • ID: {progress.guestId ? progress.guestId.slice(0, 16) + '...' : 'Loading...'}
+            </Text>
           </View>
         </View>
 
         {/* Progress Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.gridBox}>
-            <Text style={styles.gridLabel}>Total XP</Text>
-            <Text style={styles.gridValue}>0</Text>
-            <Text style={styles.gridSub}>Target: 1,600 XP</Text>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={Colors.turquoise} />
+            <Text style={styles.loadingText}>Loading progress data...</Text>
           </View>
-          <View style={styles.gridBox}>
-            <Text style={styles.gridLabel}>Coins</Text>
-            <Text style={styles.gridValue}>0</Text>
-            <Text style={styles.gridSub}>Eco Tokens</Text>
+        ) : (
+          <View style={styles.statsGrid}>
+            <View style={styles.gridBox}>
+              <Text style={styles.gridLabel}>Total XP</Text>
+              <Text style={styles.gridValue}>{progress.totalXp}</Text>
+              <Text style={styles.gridSub}>Target: 1,600 XP</Text>
+            </View>
+            <View style={styles.gridBox}>
+              <Text style={styles.gridLabel}>Coins</Text>
+              <Text style={styles.gridValue}>{progress.coins}</Text>
+              <Text style={styles.gridSub}>Eco Tokens</Text>
+            </View>
+            <View style={styles.gridBox}>
+              <Text style={styles.gridLabel}>Missions</Text>
+              <Text style={styles.gridValue}>{progress.completedModules.length} / 4</Text>
+              <Text style={styles.gridSub}>Modules Complete</Text>
+            </View>
           </View>
-          <View style={styles.gridBox}>
-            <Text style={styles.gridLabel}>Missions</Text>
-            <Text style={styles.gridValue}>0 / 4</Text>
-            <Text style={styles.gridSub}>Modules Complete</Text>
-          </View>
-        </View>
+        )}
       </Card>
 
       {/* Educational Certificate Eligibility Card */}
@@ -89,24 +114,32 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={styles.certExplanation}>
-          Eligible upon completing all 4 modules and achieving at least 70% of maximum scenario XP.
+          Eligible upon completing all 4 modules and achieving at least 70% of maximum scenario XP ({targetXp70Percent} XP).
         </Text>
 
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBackground}>
-            <View style={[styles.progressFill, { width: '0%' }]} />
+            <View style={[styles.progressFill, { width: `${certPercentage}%` }]} />
           </View>
-          <Text style={styles.progressText}>0% of requirement met</Text>
+          <Text style={styles.progressText}>{certPercentage}% of requirement met</Text>
         </View>
 
         <View style={styles.reqRow}>
           <View style={styles.reqItem}>
-            <CheckCircle size={14} color={Colors.textMuted} />
-            <Text style={styles.reqText}>Complete 4 Modules (0/4)</Text>
+            <CheckCircle
+              size={14}
+              color={progress.completedModules.length === 4 ? Colors.sustainableGreen : Colors.textMuted}
+            />
+            <Text style={styles.reqText}>Complete 4 Modules ({progress.completedModules.length}/4)</Text>
           </View>
           <View style={styles.reqItem}>
-            <CheckCircle size={14} color={Colors.textMuted} />
-            <Text style={styles.reqText}>Earn ≥ 70% Max XP (0 XP)</Text>
+            <CheckCircle
+              size={14}
+              color={progress.totalXp >= targetXp70Percent ? Colors.sustainableGreen : Colors.textMuted}
+            />
+            <Text style={styles.reqText}>
+              Earn ≥ 70% Max XP ({progress.totalXp} / {targetXp70Percent} XP)
+            </Text>
           </View>
         </View>
 
@@ -237,6 +270,22 @@ const styles = StyleSheet.create({
     padding: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.navyCardBorder,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.navyDark,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.navyCardBorder,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   gridBox: {
     flex: 1,

@@ -9,9 +9,11 @@ import { BorderRadius, Spacing } from '../src/constants/layout';
 import { Button } from '../src/components/common/Button';
 import { Card } from '../src/components/common/Card';
 import { Badge } from '../src/components/common/Badge';
+import { useGuestProgress } from '../src/context/GuestProgressContext';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { isLoading } = useGuestProgress();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,6 +81,7 @@ export default function SplashScreen() {
             title="Enter Dashboard (Guest Mode)"
             size="lg"
             variant="secondary"
+            loading={isLoading}
             onPress={() => router.replace('/(tabs)')}
             icon={<Play size={18} color={Colors.cyanSoft} />}
             style={styles.secondaryButton}
