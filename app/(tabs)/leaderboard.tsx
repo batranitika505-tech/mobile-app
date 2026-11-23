@@ -19,12 +19,12 @@ interface LeaderboardEntry {
 }
 
 const mockRankings: LeaderboardEntry[] = [
-  { rank: 1, name: 'Aarav Sharma', state: 'Rajasthan', xp: 2450, tier: 'Jal Nayak' },
-  { rank: 2, name: 'Priya Patel', state: 'Gujarat', xp: 2380, tier: 'Jal Nayak' },
-  { rank: 3, name: 'Rohit Verma', state: 'Madhya Pradesh', xp: 2190, tier: 'Jal Rakshak' },
-  { rank: 4, name: 'Ananya Iyer', state: 'Tamil Nadu', xp: 1980, tier: 'Jal Rakshak' },
-  { rank: 5, name: 'Harpreet Singh', state: 'Punjab', xp: 1850, tier: 'Jal Mitra' },
-  { rank: 6, name: 'Cadet (You)', state: 'Guest Session', xp: 0, tier: 'Water Cadet', isCurrentUser: true },
+  { rank: 1, name: 'Sample: Aarav S.', state: 'Sample State A', xp: 2450, tier: 'Jal Nayak' },
+  { rank: 2, name: 'Sample: Priya P.', state: 'Sample State B', xp: 2380, tier: 'Jal Nayak' },
+  { rank: 3, name: 'Sample: Rohit V.', state: 'Sample State C', xp: 2190, tier: 'Jal Rakshak' },
+  { rank: 4, name: 'Sample: Ananya I.', state: 'Sample State D', xp: 1980, tier: 'Jal Rakshak' },
+  { rank: 5, name: 'Sample: Harpreet S.', state: 'Sample State E', xp: 1850, tier: 'Jal Mitra' },
+  { rank: 6, name: 'You (Guest Preview)', state: 'Local Session', xp: 0, tier: 'Water Cadet', isCurrentUser: true },
 ];
 
 export default function LeaderboardScreen() {
@@ -38,13 +38,14 @@ export default function LeaderboardScreen() {
         <View style={styles.bannerRow}>
           <Trophy size={28} color={Colors.goldCoin} />
           <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>National Groundwater Board</Text>
-            <Text style={styles.bannerSubtitle}>Verified Player Standings & XP</Text>
+            <Text style={styles.bannerTitle}>Leaderboard Layout Preview</Text>
+            <Text style={styles.bannerSubtitle}>Sample Mock Standings (Preview Only)</Text>
           </View>
         </View>
         <Text style={styles.bannerDesc}>
-          Rankings are calculated from verified, non-duplicate scenario XP. Registered accounts sync
-          scores securely with Supabase.
+          The rankings below are sample preview records to demonstrate leaderboard presentation.
+          Real player standings and Supabase database synchronization will be activated in
+          subsequent milestones.
         </Text>
       </Card>
 
@@ -52,18 +53,18 @@ export default function LeaderboardScreen() {
       <Card variant="outlined" style={styles.guestNoticeCard}>
         <View style={styles.noticeHeader}>
           <ShieldCheck size={16} color={Colors.turquoiseLight} />
-          <Text style={styles.noticeTitle}>Milestone 1 Preview • Guest Session</Text>
+          <Text style={styles.noticeTitle}>Sample Preview Data • Not Live Rankings</Text>
         </View>
         <Text style={styles.noticeText}>
-          You are currently playing in local Guest Mode. Live Supabase database synchronization and
-          online profile claim will be integrated in Milestone 2.
+          All entries below are simulated placeholder records for UI and responsiveness verification.
+          No live leaderboard or real player accounts are connected in Milestone 1.
         </Text>
       </Card>
 
       {/* Filter Tabs */}
       <View style={styles.filterRow}>
         <Button
-          title="National Rankings"
+          title="Sample: National View"
           variant={activeFilter === 'national' ? 'primary' : 'secondary'}
           size="sm"
           onPress={() => setActiveFilter('national')}
@@ -71,7 +72,7 @@ export default function LeaderboardScreen() {
           style={styles.filterButton}
         />
         <Button
-          title="State Level"
+          title="Sample: State View"
           variant={activeFilter === 'regional' ? 'primary' : 'secondary'}
           size="sm"
           onPress={() => setActiveFilter('regional')}
@@ -84,9 +85,9 @@ export default function LeaderboardScreen() {
       <Card variant="default" style={styles.tableCard}>
         <View style={styles.tableHeader}>
           <Text style={[styles.colHeader, styles.colRank]}>#</Text>
-          <Text style={[styles.colHeader, styles.colPlayer]}>Player / Location</Text>
+          <Text style={[styles.colHeader, styles.colPlayer]}>Sample Player / Region</Text>
           <Text style={[styles.colHeader, styles.colTier]}>Tier</Text>
-          <Text style={[styles.colHeader, styles.colXp]}>Verified XP</Text>
+          <Text style={[styles.colHeader, styles.colXp]}>Sample XP</Text>
         </View>
 
         {mockRankings.map((entry) => (
@@ -318,3 +319,4 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
+

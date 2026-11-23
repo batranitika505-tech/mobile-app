@@ -180,8 +180,8 @@ export default function OnboardingScreen() {
         {/* Project Purpose Callout */}
         <Card variant="outlined" style={styles.infoCallout}>
           <Text style={styles.calloutText}>
-            Every decision you make in JalRakshak simulates actual CGWB hydrological data and
-            conservation practices.
+            Every scenario in JalRakshak is designed as an educational simulation of practical
+            groundwater conservation and artificial recharge techniques.
           </Text>
         </Card>
       </ScrollView>
@@ -351,3 +351,4 @@ const styles = StyleSheet.create({
     flex: 2,
   },
 });
+

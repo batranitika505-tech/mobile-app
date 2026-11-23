@@ -28,18 +28,20 @@ export default function ModalScreen() {
           </Text>
         </View>
 
-        {/* Institutional Authority */}
+        {/* Educational Problem Statement Scope */}
         <Card variant="highlight" style={styles.card}>
           <View style={styles.row}>
             <ShieldCheck size={20} color={Colors.turquoise} />
-            <Text style={styles.cardHeader}>Project Authority</Text>
+            <Text style={styles.cardHeader}>Educational Problem Statement</Text>
           </View>
           <View style={styles.authorityContent}>
-            <Text style={styles.entityTitle}>Ministry of Jal Shakti</Text>
-            <Text style={styles.deptTitle}>Department: Central Ground Water Board (CGWB)</Text>
+            <Text style={styles.entityTitle}>Groundwater Conservation & Management</Text>
+            <Text style={styles.deptTitle}>Educational game based on conservation problem statements</Text>
             <Text style={styles.bodyText}>
-              Developed to educate students, farmers, water managers, and citizens on scientific
-              groundwater replenishment, aquifer mapping, and demand management.
+              JalRakshak is an independent student educational project designed to teach scientific
+              groundwater replenishment, artificial recharge, and sustainable irrigation principles.
+              It is not an official application of the Ministry of Jal Shakti or Central Ground
+              Water Board (CGWB).
             </Text>
           </View>
         </Card>
@@ -77,12 +79,12 @@ export default function ModalScreen() {
             <Text style={styles.cardHeader}>Milestone 1 Implementation Status</Text>
           </View>
           <View style={styles.badgeWrap}>
-            <Badge label="Milestone 1 Complete" variant="success" />
-            <Badge label="Offline Ready" variant="turquoise" />
+            <Badge label="Milestone 1 Foundation" variant="turquoise" />
+            <Badge label="Offline Ready" variant="neutral" />
           </View>
           <Text style={styles.statusDescription}>
             Scaffolding, TypeScript configuration, EAS build profile, asset styling, tab navigation,
-            onboarding, and all screen foundations are active. Subsequent milestones introduce
+            onboarding, and screen foundations are active. Subsequent milestones will implement
             interactive decision mechanics, Supabase auth, and leaderboard synchronization.
           </Text>
         </Card>

@@ -84,7 +84,7 @@ export default function ProfileScreen() {
           <FileCheck2 size={24} color={Colors.turquoise} />
           <View style={styles.certTitleWrap}>
             <Text style={styles.certTitle}>Educational Achievement Certificate</Text>
-            <Text style={styles.certSub}>Project-issued CGWB learning certification</Text>
+            <Text style={styles.certSub}>Project-issued educational learning certificate</Text>
           </View>
         </View>
 
@@ -111,8 +111,8 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={styles.certDisclaimer}>
-          Notice: The certificate is a project-generated learning achievement and is not an official
-          government certification.
+          Notice: The certificate is a project-generated learning achievement for this educational
+          app and is not an official government certification.
         </Text>
       </Card>
 
@@ -160,7 +160,7 @@ export default function ProfileScreen() {
         />
 
         <Button
-          title="About JalRakshak & CGWB"
+          title="About JalRakshak Project"
           variant="secondary"
           size="md"
           onPress={() => router.push('/modal')}
@@ -372,3 +372,4 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
 });
+

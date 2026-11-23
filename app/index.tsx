@@ -18,12 +18,12 @@ export default function SplashScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        {/* National Initiative Badge */}
+        {/* Educational Project Badge */}
         <View style={styles.badgeRow}>
           <Badge
-            label="Ministry of Jal Shakti • CGWB Initiative"
+            label="Educational Project • Groundwater Conservation"
             variant="turquoise"
-            icon={<ShieldCheck size={14} color={Colors.turquoiseLight} />}
+            icon={<BookOpen size={14} color={Colors.turquoiseLight} />}
           />
         </View>
 
@@ -85,7 +85,7 @@ export default function SplashScreen() {
           />
 
           <Button
-            title="About Project & CGWB"
+            title="About Educational Project"
             size="md"
             variant="ghost"
             onPress={() => router.push('/modal')}
@@ -208,3 +208,4 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
 });
+

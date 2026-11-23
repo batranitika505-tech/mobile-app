@@ -178,9 +178,9 @@ export default function GameScreen() {
 
   const handleLaunchScenario = (moduleTitle: string, scenarioTitle: string) => {
     Alert.alert(
-      'Milestone 1 Preview',
-      `Scenario Selected:\n${scenarioTitle}\n\nModule:\n${moduleTitle}\n\nFull interactive gameplay with decision options, XP/coin scoring, and feedback engine will be activated in Milestone 2 per the Master Plan.`,
-      [{ text: 'Got it', style: 'default' }]
+      'Scenario Preview',
+      `Selected: ${scenarioTitle}\nModule: ${moduleTitle}\n\nInteractive scenario gameplay with decision choices, educational feedback, and XP scoring will be activated in Milestone 2.`,
+      [{ text: 'Close', style: 'default' }]
     );
   };
 
@@ -198,8 +198,8 @@ export default function GameScreen() {
           </View>
         </View>
         <Text style={styles.headerExplanation}>
-          Each module challenges you with actual hydrological dilemmas designed by Central Ground
-          Water Board (CGWB) principles. Choose your path wisely.
+          Each module explores groundwater dilemmas based on educational problem statements and
+          hydrological conservation principles. Choose your path wisely.
         </Text>
       </Card>
 
@@ -299,11 +299,12 @@ export default function GameScreen() {
       <Card variant="outlined" style={styles.footerNoteCard}>
         <View style={styles.noteHeader}>
           <Info size={16} color={Colors.turquoiseLight} />
-          <Text style={styles.noteTitle}>Milestone 1 Architecture Verified</Text>
+          <Text style={styles.noteTitle}>Milestone 1 Foundation Preview</Text>
         </View>
         <Text style={styles.noteBody}>
-          All module data, scenario definitions, and screen routing are wired. Decision feedback
-          logic and scoring will be linked in Milestone 2.
+          Module definitions, scenario outlines, and screen navigation are initialized. Interactive
+          decision options, educational feedback, and scoring mechanics will be implemented in
+          Milestone 2.
         </Text>
       </Card>
     </ScrollView>
@@ -491,3 +492,4 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+
