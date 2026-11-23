@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { GuestProgress, INITIAL_GUEST_PROGRESS } from '../types/progress';
+import { GuestProgress, INITIAL_GUEST_PROGRESS, ScenarioRecord } from '../types/progress';
+import { DecisionOutcome } from '../types/game';
 
 export const STORAGE_KEYS = {
   GUEST_ID: '@jalrakshak_guest_id',
@@ -57,6 +58,25 @@ export function sanitizeProgress(raw: unknown, expectedGuestId: string): GuestPr
     ? Array.from(new Set(candidate.achievements.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)))
     : [];
 
+  const scenarioRecords: Record<string, ScenarioRecord> = {};
+  if (candidate.scenarioRecords && typeof candidate.scenarioRecords === 'object' && !Array.isArray(candidate.scenarioRecords)) {
+    const rawRecords = candidate.scenarioRecords as Record<string, unknown>;
+    for (const [key, val] of Object.entries(rawRecords)) {
+      if (val && typeof val === 'object') {
+        const r = val as Record<string, unknown>;
+        scenarioRecords[key] = {
+          scenarioId: typeof r.scenarioId === 'string' ? r.scenarioId : key,
+          moduleId: typeof r.moduleId === 'string' ? r.moduleId : '',
+          earnedXp: typeof r.earnedXp === 'number' ? Math.max(0, Math.floor(r.earnedXp)) : 0,
+          earnedCoins: typeof r.earnedCoins === 'number' ? Math.max(0, Math.floor(r.earnedCoins)) : 0,
+          completedAt: typeof r.completedAt === 'string' ? r.completedAt : now,
+          answers: r.answers && typeof r.answers === 'object' ? (r.answers as Record<string, string>) : {},
+          outcomes: r.outcomes && typeof r.outcomes === 'object' ? (r.outcomes as Record<string, DecisionOutcome>) : {},
+        };
+      }
+    }
+  }
+
   const createdAt =
     typeof candidate.createdAt === 'string' && !Number.isNaN(Date.parse(candidate.createdAt))
       ? candidate.createdAt
@@ -73,6 +93,7 @@ export function sanitizeProgress(raw: unknown, expectedGuestId: string): GuestPr
     coins,
     completedScenarios,
     completedModules,
+    scenarioRecords,
     achievements,
     createdAt,
     updatedAt,
@@ -176,6 +197,7 @@ export const progressStorageService = {
       coins: 0,
       completedScenarios: [],
       completedModules: [],
+      scenarioRecords: {},
       achievements: [],
       createdAt: existingCreatedAt,
       updatedAt: new Date().toISOString(),
@@ -190,3 +212,4 @@ export const progressStorageService = {
     }
   },
 };
+

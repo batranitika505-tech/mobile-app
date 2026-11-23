@@ -20,6 +20,7 @@ import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Badge } from '../../src/components/common/Badge';
 import { useGuestProgress } from '../../src/context/GuestProgressContext';
+import { ALL_GAME_MODULES } from '../../src/data/gameData';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -38,6 +39,12 @@ export default function HomeScreen() {
   const guestLabel = progress.guestId
     ? `Guest: ${progress.guestId.slice(-6)}`
     : 'Guest Session';
+
+  const getModuleCompletedCount = (moduleId: string) => {
+    const mod = ALL_GAME_MODULES.find((m) => m.id === moduleId);
+    if (!mod) return 0;
+    return mod.scenarios.filter((s) => progress.completedScenarios.includes(s.id)).length;
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -135,7 +142,7 @@ export default function HomeScreen() {
           <View style={styles.moduleInfo}>
             <View style={styles.moduleTagRow}>
               <Badge label="Module 1" variant="warning" />
-              <Text style={styles.scenarioCount}>4 Scenarios</Text>
+              <Text style={styles.scenarioCount}>{getModuleCompletedCount('drought')} / 4 Cleared</Text>
             </View>
             <Text style={styles.moduleTitle}>Drought Crisis</Text>
             <Text style={styles.moduleSummary}>
@@ -157,7 +164,7 @@ export default function HomeScreen() {
           <View style={styles.moduleInfo}>
             <View style={styles.moduleTagRow}>
               <Badge label="Module 2" variant="turquoise" />
-              <Text style={styles.scenarioCount}>4 Scenarios</Text>
+              <Text style={styles.scenarioCount}>{getModuleCompletedCount('rainfall')} / 4 Cleared</Text>
             </View>
             <Text style={styles.moduleTitle}>Rainfall Opportunity</Text>
             <Text style={styles.moduleSummary}>
@@ -179,7 +186,7 @@ export default function HomeScreen() {
           <View style={styles.moduleInfo}>
             <View style={styles.moduleTagRow}>
               <Badge label="Module 3" variant="danger" />
-              <Text style={styles.scenarioCount}>4 Scenarios</Text>
+              <Text style={styles.scenarioCount}>{getModuleCompletedCount('contamination')} / 4 Cleared</Text>
             </View>
             <Text style={styles.moduleTitle}>Contamination Crisis</Text>
             <Text style={styles.moduleSummary}>
@@ -201,7 +208,7 @@ export default function HomeScreen() {
           <View style={styles.moduleInfo}>
             <View style={styles.moduleTagRow}>
               <Badge label="Module 4" variant="success" />
-              <Text style={styles.scenarioCount}>4 Scenarios</Text>
+              <Text style={styles.scenarioCount}>{getModuleCompletedCount('agriculture')} / 4 Cleared</Text>
             </View>
             <Text style={styles.moduleTitle}>Smart Agriculture</Text>
             <Text style={styles.moduleSummary}>

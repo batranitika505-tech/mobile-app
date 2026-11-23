@@ -34,6 +34,12 @@ export default function ProfileScreen() {
   const xpProgress = Math.min(1, progress.totalXp / targetXp70Percent);
   const certPercentage = Math.round(((moduleProgress + xpProgress) / 2) * 100);
 
+  const isDroughtUnlocked = progress.completedModules.includes('drought');
+  const isRainfallUnlocked = progress.completedModules.includes('rainfall');
+  const isContaminationUnlocked = progress.completedModules.includes('contamination');
+  const isAgriUnlocked = progress.completedModules.includes('agriculture');
+  const totalUnlockedBadges = [isDroughtUnlocked, isRainfallUnlocked, isContaminationUnlocked, isAgriUnlocked].filter(Boolean).length;
+
   const handleResetGuestData = () => {
     Alert.alert(
       'Reset Gameplay Progress',
@@ -152,32 +158,44 @@ export default function ProfileScreen() {
       {/* Achievement Badges Showcase */}
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Achievement Badges</Text>
-        <Badge label="4 Available" variant="neutral" />
+        <Badge label={`${totalUnlockedBadges} / 4 Unlocked`} variant={totalUnlockedBadges > 0 ? 'success' : 'neutral'} />
       </View>
 
       <View style={styles.badgesGrid}>
-        <Card variant="outlined" style={styles.badgeCard}>
-          <Shield size={24} color={Colors.warningOrange} />
+        <Card variant={isDroughtUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
+          <Shield size={24} color={isDroughtUnlocked ? Colors.sustainableGreenLight : Colors.warningOrange} />
           <Text style={styles.badgeTitle}>Drought Resilient</Text>
           <Text style={styles.badgeDesc}>Master drip irrigation under water scarcity</Text>
+          <Text style={[styles.badgeStatus, { color: isDroughtUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+            {isDroughtUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 1)'}
+          </Text>
         </Card>
 
-        <Card variant="outlined" style={styles.badgeCard}>
-          <Sparkles size={24} color={Colors.turquoise} />
+        <Card variant={isRainfallUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
+          <Sparkles size={24} color={isRainfallUnlocked ? Colors.sustainableGreenLight : Colors.turquoise} />
           <Text style={styles.badgeTitle}>Recharge Master</Text>
           <Text style={styles.badgeDesc}>Capture monsoon surplus via recharge shafts</Text>
+          <Text style={[styles.badgeStatus, { color: isRainfallUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+            {isRainfallUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 2)'}
+          </Text>
         </Card>
 
-        <Card variant="outlined" style={styles.badgeCard}>
-          <Award size={24} color={Colors.dangerRed} />
+        <Card variant={isContaminationUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
+          <Award size={24} color={isContaminationUnlocked ? Colors.sustainableGreenLight : Colors.dangerRed} />
           <Text style={styles.badgeTitle}>Aquifer Guardian</Text>
           <Text style={styles.badgeDesc}>Detect and mitigate borehole contamination</Text>
+          <Text style={[styles.badgeStatus, { color: isContaminationUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+            {isContaminationUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 3)'}
+          </Text>
         </Card>
 
-        <Card variant="outlined" style={styles.badgeCard}>
-          <Trophy size={24} color={Colors.sustainableGreen} />
+        <Card variant={isAgriUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
+          <Trophy size={24} color={isAgriUnlocked ? Colors.sustainableGreenLight : Colors.sustainableGreen} />
           <Text style={styles.badgeTitle}>Smart Farmer</Text>
           <Text style={styles.badgeDesc}>Implement crop budgeting & micro-irrigation</Text>
+          <Text style={[styles.badgeStatus, { color: isAgriUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+            {isAgriUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 4)'}
+          </Text>
         </Card>
       </View>
 
@@ -409,6 +427,11 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 2,
     lineHeight: 15,
+  },
+  badgeStatus: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
   },
   actionsSection: {
     gap: Spacing.sm,

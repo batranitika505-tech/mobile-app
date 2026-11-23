@@ -51,6 +51,16 @@ export default function RootLayout() {
           />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
+            name="game/[scenarioId]"
+            options={{
+              title: 'Groundwater Scenario',
+              headerBackTitle: 'Missions',
+              headerStyle: {
+                backgroundColor: Colors.navy,
+              },
+            }}
+          />
+          <Stack.Screen
             name="modal"
             options={{
               title: 'About JalRakshak',
