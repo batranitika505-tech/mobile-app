@@ -1,17 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Award,
   BookOpen,
   CheckCircle,
+  Cloud,
+  CloudCheck,
   FileCheck2,
   Info,
+  LogIn,
+  LogOut,
+  RefreshCw,
   RotateCcw,
   Shield,
   Sparkles,
   Trophy,
   User,
+  UserPlus,
 } from 'lucide-react-native';
 
 import { Colors } from '../../src/constants/colors';
@@ -20,10 +26,13 @@ import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Badge } from '../../src/components/common/Badge';
 import { useGuestProgress } from '../../src/context/GuestProgressContext';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { progress, isLoading, resetProgress } = useGuestProgress();
+  const { user, profile, signOut, isConfigured } = useAuth();
+  const { progress, isLoading, isSyncing, resetProgress, syncWithCloud } = useGuestProgress();
+  const [syncingManual, setSyncingManual] = useState(false);
 
   const currentLevel = Math.floor(progress.totalXp / 250) + 1;
 
@@ -38,12 +47,47 @@ export default function ProfileScreen() {
   const isRainfallUnlocked = progress.completedModules.includes('rainfall');
   const isContaminationUnlocked = progress.completedModules.includes('contamination');
   const isAgriUnlocked = progress.completedModules.includes('agriculture');
-  const totalUnlockedBadges = [isDroughtUnlocked, isRainfallUnlocked, isContaminationUnlocked, isAgriUnlocked].filter(Boolean).length;
+  const totalUnlockedBadges = [
+    isDroughtUnlocked,
+    isRainfallUnlocked,
+    isContaminationUnlocked,
+    isAgriUnlocked,
+  ].filter(Boolean).length;
+
+  const handleManualSync = async () => {
+    try {
+      setSyncingManual(true);
+      await syncWithCloud();
+      Alert.alert('Sync Successful', 'Your conservation progress is up to date in the cloud.');
+    } catch {
+      Alert.alert('Sync Notice', 'Could not sync with cloud. Please check network connectivity.');
+    } finally {
+      setSyncingManual(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out of your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+            Alert.alert('Signed Out', 'You are now operating in local Guest Mode.');
+          } catch {
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          }
+        },
+      },
+    ]);
+  };
 
   const handleResetGuestData = () => {
     Alert.alert(
       'Reset Gameplay Progress',
-      'This will reset your earned XP, coins, completed scenarios, and modules back to zero.\n\nYour persistent Guest ID will be preserved.',
+      'This will reset your earned XP, coins, completed scenarios, and modules back to zero.\n\nYour session ID will be preserved.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -62,6 +106,14 @@ export default function ProfileScreen() {
     );
   };
 
+  const displayName = user
+    ? profile?.full_name || profile?.display_name || user.email?.split('@')[0] || 'Guardian'
+    : 'Cadet JalRakshak';
+
+  const userSubtitle = user
+    ? user.email || 'Verified Account'
+    : `Trainee • ID: ${progress.guestId ? progress.guestId.slice(0, 16) + '...' : 'Loading...'}`;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Player Identity Card */}
@@ -72,13 +124,15 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.profileInfo}>
             <View style={styles.badgeRow}>
-              <Badge label="Guest Mode" variant="turquoise" />
+              {user ? (
+                <Badge label="Verified Account" variant="turquoise" />
+              ) : (
+                <Badge label="Guest Mode" variant="neutral" />
+              )}
               <Badge label={`Level ${currentLevel}`} variant="neutral" />
             </View>
-            <Text style={styles.playerName}>Cadet JalRakshak</Text>
-            <Text style={styles.playerRole}>
-              Trainee • ID: {progress.guestId ? progress.guestId.slice(0, 16) + '...' : 'Loading...'}
-            </Text>
+            <Text style={styles.playerName}>{displayName}</Text>
+            <Text style={styles.playerRole}>{userSubtitle}</Text>
           </View>
         </View>
 
@@ -109,6 +163,72 @@ export default function ProfileScreen() {
         )}
       </Card>
 
+      {/* Account Cloud Status Card */}
+      {user ? (
+        <Card variant="default" style={styles.syncCard}>
+          <View style={styles.syncHeader}>
+            <View style={styles.syncStatusLeft}>
+              <Cloud size={20} color={Colors.turquoise} />
+              <View>
+                <Text style={styles.syncTitle}>Cloud Synchronization</Text>
+                <Text style={styles.syncSubtitle}>
+                  {isSyncing || syncingManual
+                    ? 'Syncing with cloud...'
+                    : 'Your progress is backed up securely'}
+                </Text>
+              </View>
+            </View>
+            <Button
+              title={syncingManual ? 'Syncing...' : 'Sync Now'}
+              variant="secondary"
+              size="sm"
+              onPress={handleManualSync}
+              disabled={syncingManual || isSyncing}
+              icon={
+                syncingManual ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <RefreshCw size={14} color={Colors.white} />
+                )
+              }
+            />
+          </View>
+        </Card>
+      ) : (
+        <Card variant="default" style={styles.authPromptCard}>
+          <View style={styles.authPromptContent}>
+            <View style={styles.authPromptIcon}>
+              <Cloud size={24} color={Colors.turquoise} />
+            </View>
+            <View style={styles.authPromptTextWrap}>
+              <Text style={styles.authPromptTitle}>Save Progress to the Cloud</Text>
+              <Text style={styles.authPromptDesc}>
+                Create an account or sign in to safeguard your progress and access your certificate
+                across devices.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.authPromptBtnRow}>
+            <Button
+              title="Sign In"
+              variant="secondary"
+              size="sm"
+              onPress={() => router.push('/auth/login' as any)}
+              icon={<LogIn size={14} color={Colors.white} />}
+              style={styles.authPromptBtn}
+            />
+            <Button
+              title="Create Account"
+              variant="primary"
+              size="sm"
+              onPress={() => router.push('/auth/register' as any)}
+              icon={<UserPlus size={14} color={Colors.white} />}
+              style={styles.authPromptBtn}
+            />
+          </View>
+        </Card>
+      )}
+
       {/* Educational Certificate Eligibility Card */}
       <Card variant="default" style={styles.certCard}>
         <View style={styles.certHeader}>
@@ -120,7 +240,8 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={styles.certExplanation}>
-          Eligible upon completing all 4 modules and achieving at least 70% of maximum scenario XP ({targetXp70Percent} XP).
+          Eligible upon completing all 4 modules and achieving at least 70% of maximum scenario XP (
+          {targetXp70Percent} XP).
         </Text>
 
         <View style={styles.progressBarContainer}>
@@ -134,14 +255,24 @@ export default function ProfileScreen() {
           <View style={styles.reqItem}>
             <CheckCircle
               size={14}
-              color={progress.completedModules.length === 4 ? Colors.sustainableGreen : Colors.textMuted}
+              color={
+                progress.completedModules.length === 4
+                  ? Colors.sustainableGreen
+                  : Colors.textMuted
+              }
             />
-            <Text style={styles.reqText}>Complete 4 Modules ({progress.completedModules.length}/4)</Text>
+            <Text style={styles.reqText}>
+              Complete 4 Modules ({progress.completedModules.length}/4)
+            </Text>
           </View>
           <View style={styles.reqItem}>
             <CheckCircle
               size={14}
-              color={progress.totalXp >= targetXp70Percent ? Colors.sustainableGreen : Colors.textMuted}
+              color={
+                progress.totalXp >= targetXp70Percent
+                  ? Colors.sustainableGreen
+                  : Colors.textMuted
+              }
             />
             <Text style={styles.reqText}>
               Earn ≥ 70% Max XP ({progress.totalXp} / {targetXp70Percent} XP)
@@ -158,48 +289,81 @@ export default function ProfileScreen() {
       {/* Achievement Badges Showcase */}
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Achievement Badges</Text>
-        <Badge label={`${totalUnlockedBadges} / 4 Unlocked`} variant={totalUnlockedBadges > 0 ? 'success' : 'neutral'} />
+        <Badge
+          label={`${totalUnlockedBadges} / 4 Unlocked`}
+          variant={totalUnlockedBadges > 0 ? 'success' : 'neutral'}
+        />
       </View>
 
       <View style={styles.badgesGrid}>
         <Card variant={isDroughtUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
-          <Shield size={24} color={isDroughtUnlocked ? Colors.sustainableGreenLight : Colors.warningOrange} />
+          <Shield
+            size={24}
+            color={isDroughtUnlocked ? Colors.sustainableGreenLight : Colors.warningOrange}
+          />
           <Text style={styles.badgeTitle}>Drought Resilient</Text>
           <Text style={styles.badgeDesc}>Master drip irrigation under water scarcity</Text>
-          <Text style={[styles.badgeStatus, { color: isDroughtUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+          <Text
+            style={[
+              styles.badgeStatus,
+              { color: isDroughtUnlocked ? Colors.sustainableGreenLight : Colors.textMuted },
+            ]}>
             {isDroughtUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 1)'}
           </Text>
         </Card>
 
         <Card variant={isRainfallUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
-          <Sparkles size={24} color={isRainfallUnlocked ? Colors.sustainableGreenLight : Colors.turquoise} />
+          <Sparkles
+            size={24}
+            color={isRainfallUnlocked ? Colors.sustainableGreenLight : Colors.turquoise}
+          />
           <Text style={styles.badgeTitle}>Recharge Master</Text>
           <Text style={styles.badgeDesc}>Capture monsoon surplus via recharge shafts</Text>
-          <Text style={[styles.badgeStatus, { color: isRainfallUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+          <Text
+            style={[
+              styles.badgeStatus,
+              { color: isRainfallUnlocked ? Colors.sustainableGreenLight : Colors.textMuted },
+            ]}>
             {isRainfallUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 2)'}
           </Text>
         </Card>
 
-        <Card variant={isContaminationUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
-          <Award size={24} color={isContaminationUnlocked ? Colors.sustainableGreenLight : Colors.dangerRed} />
+        <Card
+          variant={isContaminationUnlocked ? 'sustainable' : 'outlined'}
+          style={styles.badgeCard}>
+          <Award
+            size={24}
+            color={isContaminationUnlocked ? Colors.sustainableGreenLight : Colors.dangerRed}
+          />
           <Text style={styles.badgeTitle}>Aquifer Guardian</Text>
           <Text style={styles.badgeDesc}>Detect and mitigate borehole contamination</Text>
-          <Text style={[styles.badgeStatus, { color: isContaminationUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+          <Text
+            style={[
+              styles.badgeStatus,
+              { color: isContaminationUnlocked ? Colors.sustainableGreenLight : Colors.textMuted },
+            ]}>
             {isContaminationUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 3)'}
           </Text>
         </Card>
 
         <Card variant={isAgriUnlocked ? 'sustainable' : 'outlined'} style={styles.badgeCard}>
-          <Trophy size={24} color={isAgriUnlocked ? Colors.sustainableGreenLight : Colors.sustainableGreen} />
+          <Trophy
+            size={24}
+            color={isAgriUnlocked ? Colors.sustainableGreenLight : Colors.sustainableGreen}
+          />
           <Text style={styles.badgeTitle}>Smart Farmer</Text>
           <Text style={styles.badgeDesc}>Implement crop budgeting & micro-irrigation</Text>
-          <Text style={[styles.badgeStatus, { color: isAgriUnlocked ? Colors.sustainableGreenLight : Colors.textMuted }]}>
+          <Text
+            style={[
+              styles.badgeStatus,
+              { color: isAgriUnlocked ? Colors.sustainableGreenLight : Colors.textMuted },
+            ]}>
             {isAgriUnlocked ? '✓ Unlocked' : 'Locked (Clear Module 4)'}
           </Text>
         </Card>
       </View>
 
-      {/* Navigation Shortcuts */}
+      {/* Navigation Shortcuts & Session Controls */}
       <View style={styles.actionsSection}>
         <Button
           title="Review Onboarding Tutorial"
@@ -219,8 +383,20 @@ export default function ProfileScreen() {
           style={styles.actionBtn}
         />
 
+        {user ? (
+          <Button
+            title="Sign Out of Account"
+            variant="ghost"
+            size="md"
+            onPress={handleSignOut}
+            icon={<LogOut size={18} color={Colors.warningOrange} />}
+            textStyle={{ color: Colors.warningOrange }}
+            style={styles.actionBtn}
+          />
+        ) : null}
+
         <Button
-          title="Reset Local Guest Progress"
+          title="Reset Local Progress"
           variant="ghost"
           size="sm"
           onPress={handleResetGuestData}
@@ -323,6 +499,70 @@ const styles = StyleSheet.create({
   gridSub: {
     fontSize: 9,
     color: Colors.cyanSoft,
+  },
+  syncCard: {
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  syncHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  syncStatusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    flex: 1,
+  },
+  syncTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  syncSubtitle: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  authPromptCard: {
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.navy,
+  },
+  authPromptContent: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  authPromptIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.navyDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authPromptTextWrap: {
+    flex: 1,
+  },
+  authPromptTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  authPromptDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  authPromptBtnRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  authPromptBtn: {
+    flex: 1,
   },
   certCard: {
     padding: Spacing.md,
@@ -444,4 +684,3 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
 });
-

@@ -20,10 +20,12 @@ import { Button } from '../../src/components/common/Button';
 import { Card } from '../../src/components/common/Card';
 import { Badge } from '../../src/components/common/Badge';
 import { useGuestProgress } from '../../src/context/GuestProgressContext';
+import { useAuth } from '../../src/context/AuthContext';
 import { ALL_GAME_MODULES } from '../../src/data/gameData';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const { progress, isLoading } = useGuestProgress();
 
   const currentLevel = Math.floor(progress.totalXp / 250) + 1;
@@ -36,9 +38,15 @@ export default function HomeScreen() {
           ? 'Guardian'
           : 'Master';
 
-  const guestLabel = progress.guestId
-    ? `Guest: ${progress.guestId.slice(-6)}`
-    : 'Guest Session';
+  const cadetDisplayName = user
+    ? profile?.full_name || user.email?.split('@')[0] || 'Groundwater Guardian'
+    : 'Groundwater Guardian';
+
+  const cadetBadgeLabel = user
+    ? 'Verified Cadet'
+    : progress.guestId
+      ? `Guest: ${progress.guestId.slice(-6)}`
+      : 'Guest Session';
 
   const getModuleCompletedCount = (moduleId: string) => {
     const mod = ALL_GAME_MODULES.find((m) => m.id === moduleId);
@@ -53,10 +61,10 @@ export default function HomeScreen() {
         <View style={styles.bannerHeader}>
           <View>
             <Text style={styles.welcomeSubtitle}>Welcome Back, Cadet</Text>
-            <Text style={styles.cadetName}>Groundwater Guardian</Text>
+            <Text style={styles.cadetName}>{cadetDisplayName}</Text>
           </View>
           <Badge
-            label={guestLabel}
+            label={cadetBadgeLabel}
             variant="turquoise"
             icon={<Droplets size={12} color={Colors.turquoiseLight} />}
           />
