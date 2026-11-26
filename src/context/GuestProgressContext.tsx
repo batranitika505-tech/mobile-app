@@ -11,6 +11,8 @@ interface GuestProgressContextValue {
   progress: GuestProgress;
   isLoading: boolean;
   isSyncing: boolean;
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  lastSyncError: string | null;
   refreshProgress: () => Promise<void>;
   resetProgress: () => Promise<void>;
   updateProgress: (partial: Partial<GuestProgress>) => Promise<void>;
@@ -19,7 +21,7 @@ interface GuestProgressContextValue {
   ) => Promise<{ isFirstCompletion: boolean; earnedXp: number; earnedCoins: number }>;
   isScenarioCompleted: (scenarioId: string) => boolean;
   getScenarioRecord: (scenarioId: string) => ScenarioRecord | undefined;
-  syncWithCloud: () => Promise<void>;
+  syncWithCloud: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const defaultFallbackProgress: GuestProgress = INITIAL_GUEST_PROGRESS('guest_init');
@@ -28,13 +30,15 @@ const GuestProgressContext = createContext<GuestProgressContextValue>({
   progress: defaultFallbackProgress,
   isLoading: true,
   isSyncing: false,
+  syncStatus: 'idle',
+  lastSyncError: null,
   refreshProgress: async () => {},
   resetProgress: async () => {},
   updateProgress: async () => {},
   completeScenario: async () => ({ isFirstCompletion: false, earnedXp: 0, earnedCoins: 0 }),
   isScenarioCompleted: () => false,
   getScenarioRecord: () => undefined,
-  syncWithCloud: async () => {},
+  syncWithCloud: async () => ({ success: false, error: 'Context not initialized' }),
 });
 
 export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,6 +46,8 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
   const [progress, setProgress] = useState<GuestProgress>(defaultFallbackProgress);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [lastSyncError, setLastSyncError] = useState<string | null>(null);
   const syncedUserIdRef = useRef<string | null>(null);
 
   const loadProgress = useCallback(async () => {
@@ -66,6 +72,7 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
     if (user?.id && syncedUserIdRef.current !== user.id && !isLoading) {
       syncedUserIdRef.current = user.id;
       setIsSyncing(true);
+      setSyncStatus('syncing');
 
       cloudProgressService
         .migrateGuestToCloud(user.id, progress)
@@ -74,10 +81,19 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
           if (res.success && res.progress) {
             setProgress(res.progress);
             progressStorageService.saveGuestProgress(res.progress).catch(() => {});
+            setSyncStatus('synced');
+            setLastSyncError(null);
+          } else {
+            setSyncStatus('error');
+            setLastSyncError(res.error || 'Initial sync failed');
           }
         })
         .catch((err) => {
-          console.warn('[GuestProgressContext] Background cloud sync error:', err);
+          if (!isMounted) return;
+          const msg = err instanceof Error ? err.message : 'Background sync failed';
+          console.warn('[GuestProgressContext] Background cloud sync error:', msg);
+          setSyncStatus('error');
+          setLastSyncError(msg);
         })
         .finally(() => {
           if (isMounted) {
@@ -86,6 +102,8 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
         });
     } else if (!user?.id) {
       syncedUserIdRef.current = null;
+      setSyncStatus('idle');
+      setLastSyncError(null);
     }
 
     return () => {
@@ -93,17 +111,32 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [user?.id, isLoading, progress]);
 
-  const syncWithCloud = useCallback(async () => {
-    if (!user?.id) return;
+  const syncWithCloud = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!user?.id) {
+      return { success: false, error: 'User is not authenticated' };
+    }
     try {
       setIsSyncing(true);
+      setSyncStatus('syncing');
       const res = await cloudProgressService.migrateGuestToCloud(user.id, progress);
       if (res.success && res.progress) {
         setProgress(res.progress);
         await progressStorageService.saveGuestProgress(res.progress);
+        setSyncStatus('synced');
+        setLastSyncError(null);
+        return { success: true };
+      } else {
+        const errorMsg = res.error || 'Failed to sync with cloud';
+        setSyncStatus('error');
+        setLastSyncError(errorMsg);
+        return { success: false, error: errorMsg };
       }
     } catch (err) {
-      console.warn('[GuestProgressContext] Manual sync error:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Unknown sync error';
+      console.warn('[GuestProgressContext] Manual sync error:', errorMsg);
+      setSyncStatus('error');
+      setLastSyncError(errorMsg);
+      return { success: false, error: errorMsg };
     } finally {
       setIsSyncing(false);
     }
@@ -251,6 +284,8 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
         progress,
         isLoading,
         isSyncing,
+        syncStatus,
+        lastSyncError,
         refreshProgress: loadProgress,
         resetProgress: handleResetProgress,
         updateProgress: handleUpdateProgress,

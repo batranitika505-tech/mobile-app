@@ -31,7 +31,15 @@ import { useAuth } from '../../src/context/AuthContext';
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut, isConfigured } = useAuth();
-  const { progress, isLoading, isSyncing, resetProgress, syncWithCloud } = useGuestProgress();
+  const {
+    progress,
+    isLoading,
+    isSyncing,
+    syncStatus,
+    lastSyncError,
+    resetProgress,
+    syncWithCloud,
+  } = useGuestProgress();
   const [syncingManual, setSyncingManual] = useState(false);
 
   const currentLevel = Math.floor(progress.totalXp / 250) + 1;
@@ -57,10 +65,18 @@ export default function ProfileScreen() {
   const handleManualSync = async () => {
     try {
       setSyncingManual(true);
-      await syncWithCloud();
-      Alert.alert('Sync Successful', 'Your conservation progress is up to date in the cloud.');
-    } catch {
-      Alert.alert('Sync Notice', 'Could not sync with cloud. Please check network connectivity.');
+      const res = await syncWithCloud();
+      if (res.success) {
+        Alert.alert('Sync Successful', 'Your conservation progress is up to date in the cloud.');
+      } else {
+        Alert.alert(
+          'Sync Failed',
+          res.error || 'Could not sync progress with the cloud. Please check network connectivity or database permissions.'
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred during sync.';
+      Alert.alert('Sync Error', message);
     } finally {
       setSyncingManual(false);
     }
@@ -168,13 +184,25 @@ export default function ProfileScreen() {
         <Card variant="default" style={styles.syncCard}>
           <View style={styles.syncHeader}>
             <View style={styles.syncStatusLeft}>
-              <Cloud size={20} color={Colors.turquoise} />
-              <View>
+              <Cloud
+                size={20}
+                color={syncStatus === 'error' ? Colors.warningOrange : Colors.turquoise}
+              />
+              <View style={styles.syncTextWrap}>
                 <Text style={styles.syncTitle}>Cloud Synchronization</Text>
-                <Text style={styles.syncSubtitle}>
+                <Text
+                  style={[
+                    styles.syncSubtitle,
+                    syncStatus === 'error' && styles.syncSubtitleError,
+                  ]}
+                  numberOfLines={2}>
                   {isSyncing || syncingManual
                     ? 'Syncing with cloud...'
-                    : 'Your progress is backed up securely'}
+                    : syncStatus === 'error'
+                      ? `Sync failed: ${lastSyncError || 'Check permissions or network'}`
+                      : syncStatus === 'synced'
+                        ? 'Your progress is backed up securely in the cloud'
+                        : 'Tap to sync progress with cloud'}
                 </Text>
               </View>
             </View>
@@ -520,10 +548,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.white,
   },
+  syncTextWrap: {
+    flex: 1,
+  },
   syncSubtitle: {
     fontSize: 11,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  syncSubtitleError: {
+    color: Colors.warningOrange,
   },
   authPromptCard: {
     padding: Spacing.md,

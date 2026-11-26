@@ -125,9 +125,12 @@ export const cloudProgressService = {
   /**
    * Upserts the user's progress in Supabase.
    */
-  async saveCloudProgress(userId: string, progress: GuestProgress): Promise<boolean> {
+  async saveCloudProgress(
+    userId: string,
+    progress: GuestProgress
+  ): Promise<{ success: boolean; error?: string }> {
     if (!isSupabaseConfigured || !supabase) {
-      return false;
+      return { success: false, error: 'Supabase client is not configured' };
     }
 
     try {
@@ -149,13 +152,14 @@ export const cloudProgressService = {
 
       if (error) {
         console.warn('[CloudProgressService] Error saving cloud progress:', error.message);
-        return false;
+        return { success: false, error: error.message };
       }
 
-      return true;
+      return { success: true };
     } catch (err) {
-      console.warn('[CloudProgressService] Unexpected error in saveCloudProgress:', err);
-      return false;
+      const message = err instanceof Error ? err.message : 'Unexpected save error';
+      console.warn('[CloudProgressService] Unexpected error in saveCloudProgress:', message);
+      return { success: false, error: message };
     }
   },
 
@@ -168,7 +172,7 @@ export const cloudProgressService = {
     guestProgress: GuestProgress
   ): Promise<CloudSyncResult> {
     if (!isSupabaseConfigured || !supabase) {
-      return { success: false, error: 'Supabase is not configured' };
+      return { success: false, error: 'Supabase client is not configured' };
     }
 
     try {
@@ -189,12 +193,12 @@ export const cloudProgressService = {
         finalProgress = mergeProgressStates(guestProgress, existingCloud);
       }
 
-      const saved = await this.saveCloudProgress(userId, finalProgress);
-      if (!saved) {
+      const saveResult = await this.saveCloudProgress(userId, finalProgress);
+      if (!saveResult.success) {
         return {
           success: false,
           progress: existingCloud || guestProgress,
-          error: 'Failed to upload progress to cloud',
+          error: saveResult.error || 'Failed to upload progress to cloud',
         };
       }
 
