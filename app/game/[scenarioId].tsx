@@ -37,6 +37,9 @@ import { Badge } from '../../src/components/common/Badge';
 import { getNextScenario, getScenarioById } from '../../src/data/gameData';
 import { scoringService } from '../../src/services/scoringService';
 import { useGuestProgress } from '../../src/context/GuestProgressContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { leaderboardService } from '../../src/services/leaderboardService';
+import { VerifiedScenarioResult } from '../../src/types/database';
 import { DecisionChoice, DecisionOutcome, QuestionSubmission, ScenarioCompletionSummary } from '../../src/types/game';
 
 type ScenarioStep = 'intro' | 'question' | 'summary';
@@ -45,6 +48,7 @@ export default function ScenarioPlayerScreen() {
   const router = useRouter();
   const { scenarioId } = useLocalSearchParams<{ scenarioId: string }>();
   const { isScenarioCompleted, getScenarioRecord, completeScenario } = useGuestProgress();
+  const { user } = useAuth();
 
   const scenarioData = useMemo(() => {
     if (!scenarioId) return undefined;
@@ -59,6 +63,11 @@ export default function ScenarioPlayerScreen() {
   const [questionSubmissions, setQuestionSubmissions] = useState<QuestionSubmission[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [finalSummary, setFinalSummary] = useState<ScenarioCompletionSummary | null>(null);
+  const [verifiedResult, setVerifiedResult] = useState<VerifiedScenarioResult | null>(null);
+  const [verifiedStatus, setVerifiedStatus] = useState<
+    'idle' | 'success' | 'already_completed' | 'unauthenticated' | 'failed'
+  >('idle');
+  const [verifiedError, setVerifiedError] = useState<string | null>(null);
 
   if (!scenarioData) {
     return (
@@ -126,9 +135,29 @@ export default function ScenarioPlayerScreen() {
         const fullAnswers = { ...userAnswers, [currentQuestion.id]: submittedChoice.id };
         const summary = scoringService.evaluateScenario(scenario, fullAnswers, isAlreadyCompleted);
 
-        // Persist immediately to AsyncStorage via context
+        // Persist immediately to AsyncStorage via context (local progress always protected)
         await completeScenario(summary);
         setFinalSummary(summary);
+
+        // Submit to competitive leaderboard RPC if authenticated
+        if (user?.id) {
+          try {
+            const rpcRes = await leaderboardService.submitVerifiedScenario(scenario.id, fullAnswers);
+            if (rpcRes.success && rpcRes.data) {
+              setVerifiedResult(rpcRes.data);
+              setVerifiedStatus(rpcRes.data.status === 'success' ? 'success' : 'already_completed');
+            } else {
+              setVerifiedStatus('failed');
+              setVerifiedError(rpcRes.error || 'Server validation failed');
+            }
+          } catch (rpcErr) {
+            setVerifiedStatus('failed');
+            setVerifiedError(rpcErr instanceof Error ? rpcErr.message : 'Network error submitting for verification');
+          }
+        } else {
+          setVerifiedStatus('unauthenticated');
+        }
+
         setCurrentStep('summary');
       } catch (err) {
         Alert.alert('Storage Notice', 'Failed to save progress. Please check storage permissions.');
@@ -147,6 +176,9 @@ export default function ScenarioPlayerScreen() {
     setUserAnswers({});
     setQuestionSubmissions([]);
     setFinalSummary(null);
+    setVerifiedResult(null);
+    setVerifiedStatus('idle');
+    setVerifiedError(null);
   };
 
   const nextScenario = getNextScenario(scenario.id);
@@ -498,6 +530,69 @@ export default function ScenarioPlayerScreen() {
           </View>
         )}
       </Card>
+
+      {/* Competitive Leaderboard Verification Status */}
+      {verifiedStatus === 'success' && verifiedResult && (
+        <Card variant="highlight" style={styles.leaderboardStatusCard}>
+          <View style={styles.statusRow}>
+            <CheckCircle2 size={22} color={Colors.turquoise} />
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.statusTitle}>Official Ranking Updated</Text>
+              <Text style={styles.statusSubtitle}>
+                +{verifiedResult.earned_xp} competitive XP verified and credited to the National Leaderboard!
+              </Text>
+            </View>
+          </View>
+        </Card>
+      )}
+
+      {verifiedStatus === 'already_completed' && (
+        <Card variant="outlined" style={styles.leaderboardStatusCard}>
+          <View style={styles.statusRow}>
+            <RotateCcw size={22} color={Colors.cyanSoft} />
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.statusTitle}>Practice Mission Replay</Text>
+              <Text style={styles.statusSubtitle}>
+                You already completed this mission. Verified leaderboard XP was credited on your first completion.
+              </Text>
+            </View>
+          </View>
+        </Card>
+      )}
+
+      {verifiedStatus === 'failed' && (
+        <Card variant="outlined" style={styles.leaderboardStatusCard}>
+          <View style={styles.statusRow}>
+            <AlertCircle size={22} color={Colors.warningOrange} />
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.statusTitle}>Competitive Credit Not Confirmed</Text>
+              <Text style={styles.statusSubtitle}>
+                Your local progress is safely saved, but competitive leaderboard credit was not confirmed ({verifiedError || 'Offline'}). This submission will not automatically sync.
+              </Text>
+            </View>
+          </View>
+        </Card>
+      )}
+
+      {verifiedStatus === 'unauthenticated' && (
+        <Card variant="outlined" style={styles.leaderboardStatusCard}>
+          <View style={styles.statusRow}>
+            <Sparkles size={22} color={Colors.cyanSoft} />
+            <View style={styles.statusTextContainer}>
+              <Text style={styles.statusTitle}>Compete on National Leaderboard</Text>
+              <Text style={styles.statusSubtitle}>
+                Your progress is saved locally. Sign in with a JalRakshak account to record verified scores and climb the national leaderboard.
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/auth/login')}
+                style={styles.signInLink}
+              >
+                <Text style={styles.signInLinkText}>Sign in to compete →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Card>
+      )}
 
       {/* Decision Review List */}
       <View style={styles.reviewSection}>
@@ -1038,5 +1133,36 @@ const styles = StyleSheet.create({
   },
   summaryActions: {
     gap: Spacing.sm,
+  },
+  leaderboardStatusCard: {
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  statusTextContainer: {
+    flex: 1,
+  },
+  statusTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+    marginBottom: 2,
+  },
+  statusSubtitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 17,
+  },
+  signInLink: {
+    marginTop: Spacing.xs,
+  },
+  signInLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.turquoise,
   },
 });
