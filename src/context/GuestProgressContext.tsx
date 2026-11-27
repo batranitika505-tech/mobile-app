@@ -2,8 +2,10 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 
 import { DecisionOutcome, ScenarioCompletionSummary } from '../types/game';
 import { GuestProgress, INITIAL_GUEST_PROGRESS, ScenarioRecord } from '../types/progress';
+import { Achievement } from '../types/achievement';
 import { progressStorageService } from '../services/progressStorage';
 import { cloudProgressService } from '../services/cloudProgressService';
+import { achievementService } from '../services/achievementService';
 import { getModuleById } from '../data/gameData';
 import { useAuth } from './AuthContext';
 
@@ -18,7 +20,12 @@ interface GuestProgressContextValue {
   updateProgress: (partial: Partial<GuestProgress>) => Promise<void>;
   completeScenario: (
     summary: ScenarioCompletionSummary
-  ) => Promise<{ isFirstCompletion: boolean; earnedXp: number; earnedCoins: number }>;
+  ) => Promise<{
+    isFirstCompletion: boolean;
+    earnedXp: number;
+    earnedCoins: number;
+    newlyUnlockedAchievements: Achievement[];
+  }>;
   isScenarioCompleted: (scenarioId: string) => boolean;
   getScenarioRecord: (scenarioId: string) => ScenarioRecord | undefined;
   syncWithCloud: () => Promise<{ success: boolean; error?: string }>;
@@ -35,7 +42,12 @@ const GuestProgressContext = createContext<GuestProgressContextValue>({
   refreshProgress: async () => {},
   resetProgress: async () => {},
   updateProgress: async () => {},
-  completeScenario: async () => ({ isFirstCompletion: false, earnedXp: 0, earnedCoins: 0 }),
+  completeScenario: async () => ({
+    isFirstCompletion: false,
+    earnedXp: 0,
+    earnedCoins: 0,
+    newlyUnlockedAchievements: [],
+  }),
   isScenarioCompleted: () => false,
   getScenarioRecord: () => undefined,
   syncWithCloud: async () => ({ success: false, error: 'Context not initialized' }),
@@ -198,7 +210,12 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleCompleteScenario = useCallback(
     async (
       summary: ScenarioCompletionSummary
-    ): Promise<{ isFirstCompletion: boolean; earnedXp: number; earnedCoins: number }> => {
+    ): Promise<{
+      isFirstCompletion: boolean;
+      earnedXp: number;
+      earnedCoins: number;
+      newlyUnlockedAchievements: Achievement[];
+    }> => {
       const isAlreadyCompleted = progress.completedScenarios.includes(summary.scenarioId);
 
       // Duplicate reward prevention:
@@ -208,6 +225,7 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
           isFirstCompletion: false,
           earnedXp: 0,
           earnedCoins: 0,
+          newlyUnlockedAchievements: [],
         };
       }
 
@@ -249,13 +267,45 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
-      const nextProgress: GuestProgress = {
-        ...progress,
-        totalXp: progress.totalXp + summary.totalXpEarned,
-        coins: progress.coins + summary.totalCoinsEarned,
+      // Base updated progression before achievement evaluation
+      const updatedTotalXp = progress.totalXp + summary.totalXpEarned;
+      const baseCoins = progress.coins + summary.totalCoinsEarned;
+
+      // Construct candidate updated snapshot to evaluate achievements accurately
+      const candidateSnapshot = {
+        totalXp: updatedTotalXp,
+        coins: baseCoins,
         completedScenarios: updatedCompletedScenarios,
         completedModules: updatedCompletedModules,
         scenarioRecords: updatedRecords,
+        achievements: progress.achievements,
+      };
+
+      // Pure evaluation against updated snapshot, passing existing unlocked IDs
+      const newlyUnlocked = achievementService.evaluateAchievements(
+        candidateSnapshot,
+        progress.achievements
+      );
+
+      // Award Eco Coin rewards for newly unlocked achievements exactly once
+      const achievementCoinBonus = newlyUnlocked.reduce(
+        (sum, a) => sum + (a.coinReward || 0),
+        0
+      );
+
+      const finalCoins = baseCoins + achievementCoinBonus;
+      const updatedAchievements = Array.from(
+        new Set([...progress.achievements, ...newlyUnlocked.map((a) => a.id)])
+      );
+
+      const nextProgress: GuestProgress = {
+        ...progress,
+        totalXp: updatedTotalXp,
+        coins: finalCoins,
+        completedScenarios: updatedCompletedScenarios,
+        completedModules: updatedCompletedModules,
+        scenarioRecords: updatedRecords,
+        achievements: updatedAchievements,
         updatedAt: new Date().toISOString(),
       };
 
@@ -272,7 +322,8 @@ export const GuestProgressProvider: React.FC<{ children: React.ReactNode }> = ({
       return {
         isFirstCompletion: true,
         earnedXp: summary.totalXpEarned,
-        earnedCoins: summary.totalCoinsEarned,
+        earnedCoins: summary.totalCoinsEarned + achievementCoinBonus,
+        newlyUnlockedAchievements: newlyUnlocked,
       };
     },
     [progress, user?.id]

@@ -18,14 +18,17 @@ import {
   Coins,
   Compass,
   CornerDownRight,
+  Droplet,
   Flame,
   HelpCircle,
   Play,
   RotateCcw,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Sprout,
   Target,
+  Trophy,
   XCircle,
 } from 'lucide-react-native';
 
@@ -40,7 +43,35 @@ import { useGuestProgress } from '../../src/context/GuestProgressContext';
 import { useAuth } from '../../src/context/AuthContext';
 import { leaderboardService } from '../../src/services/leaderboardService';
 import { VerifiedScenarioResult } from '../../src/types/database';
+import { Achievement } from '../../src/types/achievement';
 import { DecisionChoice, DecisionOutcome, QuestionSubmission, ScenarioCompletionSummary } from '../../src/types/game';
+
+function renderAchievementIcon(iconName: string) {
+  switch (iconName) {
+    case 'Droplet':
+      return <Droplet size={22} color={Colors.turquoiseLight} />;
+    case 'ShieldAlert':
+      return <ShieldAlert size={22} color={Colors.warningOrange} />;
+    case 'Sparkles':
+      return <Sparkles size={22} color={Colors.goldCoin} />;
+    case 'ShieldCheck':
+      return <ShieldCheck size={22} color={Colors.sustainableGreenLight} />;
+    case 'Sprout':
+      return <Sprout size={22} color={Colors.sustainableGreenLight} />;
+    case 'Compass':
+      return <Compass size={22} color={Colors.cyanSoft} />;
+    case 'Award':
+      return <Award size={22} color={Colors.goldCoin} />;
+    case 'Flame':
+      return <Flame size={22} color={Colors.warningOrange} />;
+    case 'Target':
+      return <Target size={22} color={Colors.dangerRed} />;
+    case 'Trophy':
+      return <Trophy size={22} color={Colors.goldCoin} />;
+    default:
+      return <Award size={22} color={Colors.turquoise} />;
+  }
+}
 
 type ScenarioStep = 'intro' | 'question' | 'summary';
 
@@ -63,6 +94,7 @@ export default function ScenarioPlayerScreen() {
   const [questionSubmissions, setQuestionSubmissions] = useState<QuestionSubmission[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [finalSummary, setFinalSummary] = useState<ScenarioCompletionSummary | null>(null);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
   const [verifiedResult, setVerifiedResult] = useState<VerifiedScenarioResult | null>(null);
   const [verifiedStatus, setVerifiedStatus] = useState<
     'idle' | 'success' | 'already_completed' | 'unauthenticated' | 'failed'
@@ -136,8 +168,9 @@ export default function ScenarioPlayerScreen() {
         const summary = scoringService.evaluateScenario(scenario, fullAnswers, isAlreadyCompleted);
 
         // Persist immediately to AsyncStorage via context (local progress always protected)
-        await completeScenario(summary);
+        const completionResult = await completeScenario(summary);
         setFinalSummary(summary);
+        setUnlockedAchievements(completionResult.newlyUnlockedAchievements || []);
 
         // Submit to competitive leaderboard RPC if authenticated
         if (user?.id) {
@@ -176,6 +209,7 @@ export default function ScenarioPlayerScreen() {
     setUserAnswers({});
     setQuestionSubmissions([]);
     setFinalSummary(null);
+    setUnlockedAchievements([]);
     setVerifiedResult(null);
     setVerifiedStatus('idle');
     setVerifiedError(null);
@@ -530,6 +564,54 @@ export default function ScenarioPlayerScreen() {
           </View>
         )}
       </Card>
+
+      {/* Newly Unlocked Achievements Notification / Cards */}
+      {unlockedAchievements.length > 0 && (
+        <View style={styles.unlockedAchievementsSection}>
+          <View style={styles.unlockedHeaderRow}>
+            <Trophy size={20} color={Colors.goldCoin} />
+            <Text style={styles.unlockedSectionTitle}>
+              {unlockedAchievements.length === 1
+                ? 'Achievement Unlocked!'
+                : `${unlockedAchievements.length} Achievements Unlocked!`}
+            </Text>
+          </View>
+
+          {unlockedAchievements.map((ach) => (
+            <Card key={ach.id} variant="highlight" style={styles.achievementUnlockCard}>
+              <View style={styles.achievementRow}>
+                <View style={styles.achievementIconCircle}>
+                  {renderAchievementIcon(ach.icon)}
+                </View>
+                <View style={styles.achievementTextWrap}>
+                  <View style={styles.achievementBadgeRow}>
+                    <Text style={styles.achievementCardTitle}>{ach.title}</Text>
+                    <Badge
+                      label={ach.tier.toUpperCase()}
+                      variant={
+                        ach.tier === 'platinum' || ach.tier === 'gold'
+                          ? 'warning'
+                          : ach.tier === 'silver'
+                            ? 'turquoise'
+                            : 'neutral'
+                      }
+                    />
+                  </View>
+                  <Text style={styles.achievementCardDesc}>{ach.description}</Text>
+                  {ach.coinReward > 0 && (
+                    <View style={styles.achievementRewardBadge}>
+                      <Coins size={14} color={Colors.goldCoin} />
+                      <Text style={styles.achievementRewardText}>
+                        +{ach.coinReward} Eco Coins Earned
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </Card>
+          ))}
+        </View>
+      )}
 
       {/* Competitive Leaderboard Verification Status */}
       {verifiedStatus === 'success' && verifiedResult && (
@@ -1164,5 +1246,68 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: Colors.turquoise,
+  },
+  unlockedAchievementsSection: {
+    marginBottom: Spacing.md,
+  },
+  unlockedHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
+  unlockedSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.goldCoin,
+  },
+  achievementUnlockCard: {
+    marginBottom: Spacing.xs,
+    padding: Spacing.sm,
+  },
+  achievementRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  achievementIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.navyDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  achievementTextWrap: {
+    flex: 1,
+  },
+  achievementBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  achievementCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+    flex: 1,
+    marginRight: Spacing.xs,
+  },
+  achievementCardDesc: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 16,
+  },
+  achievementRewardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: Spacing.xs,
+  },
+  achievementRewardText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.goldCoin,
   },
 });
