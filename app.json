@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.jalrakshak.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0A192F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

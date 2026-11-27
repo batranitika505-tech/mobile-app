@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Award,
   BookOpen,
@@ -76,6 +77,7 @@ function renderAchievementIcon(iconName: string, isUnlocked: boolean) {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, profile, signOut, isConfigured } = useAuth();
   const {
     progress,
@@ -303,7 +305,12 @@ export default function ProfileScreen() {
     : `Trainee • ID: ${progress.guestId ? progress.guestId.slice(0, 16) + '...' : 'Loading...'}`;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: Math.max(Spacing.xxl, Spacing.xxl + insets.bottom) },
+      ]}>
       {/* Player Identity Card */}
       <Card variant="highlight" style={styles.profileCard}>
         <View style={styles.profileHeader}>
